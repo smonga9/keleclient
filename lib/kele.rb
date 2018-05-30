@@ -1,32 +1,32 @@
 require 'httparty'
+ require 'json'
+ require './lib/roadmap.rb'
 
-require 'json'
+ class Kele
+   include HTTParty
+  include Roadmap
+  # base_uri = 'https://www.bloc.io/api/v1'
 
-class Kele
-    include HTTParty
-    base_uri 'https://www.bloc.io/api/v1'
-    include JSON
+   def initialize(email, password)
+     options = { body: { email: email, password: password } }
+     response = self.class.post(api_url("sessions"), options)
+     raise "Invalid email or password" if response.code == 404
+     @auth_token = response["auth_token"]
+   end
 
-    attr_accessor :url, :authtoken
+   def get_me
+     response = self.class.get(api_url("users/me"), headers: { "authorization" => @auth_token})
+    @user = JSON.parse(response.body)
+   end
 
-    def initialize(email, password)
-        @url = 'https://www.bloc.io/api/v1'
-        @authtoken = self.sign_in(email, password)
-     end
+   def get_mentor_availability(mentor_id)
+     response = self.class.get(api_url("mentors/#{mentor_id}/student_availability"), headers: { "authorization" => @auth_token})
+     @mentor_availability = JSON.parse(response.body)
+     p @mentor_availability
+   end
 
-     def sign_in(email, password)
-        @authtoken = self.class.post('/sessions', :query => {email: email, password: password})["auth_token"]
-        raise "Invalid login" if @authtoken.nil?
-        @authtoken
-    end
-
-    def get_me
-        @user_data = JSON.parse((self.class.get('/users/me', headers: {"authorization" => @authtoken})).body)
-    end
-
-    def get_mentor_availability(mentor_id)
-      response = self.class.get(api_url("mentors/#{mentor_id}/student_availability"), headers: { "authorization" => @auth_token})
-      @mentor_availability = JSON.parse(response.body)
-      p @mentor_availability
-    end
-end
+   private
+   def api_url(endpoint)
+     "https://www.bloc.io/api/v1/#{endpoint}"
+   end
+ end
