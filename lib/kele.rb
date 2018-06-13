@@ -27,20 +27,35 @@ require './lib/roadmap.rb'
    end
 
    def get_messages(page = nil)
-      if page == nil
-        response = self.class.get(api_endpoint("message_threads"), headers: { "authorization" => @auth_token})
-      else
-        response = self.class.get(api_endpoint("message_threads?page=#{page}"), headers: { "authorization" => @auth_token })
-      end
-      puts response.code
-      puts @messages = JSON.parse(response.body)
-   end
-
-    def create_message(recipient_id, subject, stripped_text)
-      self.get_me if self.user == nil
-      response = self.class.post(api_endpoint("messages"), body: { "sender": self.user["email"], "recipient_id": recipient_id, "subject": subject, "stripped-text": stripped_text }, headers: {"authorization" => @auth_token })
-      puts response.code
+    if page
+        response = self.class.get(
+            "/message_threads/",
+            headers: { "authorization" => @auth_token },
+            body: { "page": page })
+    else #returns all messages if no page entered
+        response = self.class.get(
+            "/message_threads/",
+            headers: { "authorization" => @auth_token })
     end
+    raise 'Unable to get messages' if response.code != 200
+    @messages = JSON.parse(response.body)
+  end
+
+
+  def create_message(sender, recipient_id, subject, stripped_text, token=nil)
+    response = self.class.post(
+        "/messages",
+        headers: { "authorization" => @auth_token },
+        body: {"sender": sender,
+        "recipient_id": recipient_id,
+        "subject": subject,
+        "stripped-text": stripped_text,
+        "token": token
+        })
+    puts response
+    raise 'Unable to post message' if response.code != 200
+    @message_confirmed = JSON.parse(response.body)
+  end
 
    private
    def api_url(endpoint)
